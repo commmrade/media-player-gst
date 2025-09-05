@@ -106,16 +106,10 @@ int main(int argc, char** argv) {
         }
     }
     
-
-    printf("Is audio only: %d\n", state.is_only_audio);
-
-    
-    // return 0;
     GstBus* bus = NULL;
     GstMessage* message = NULL;
     
     gst_init(&argc, &argv);
-    printf("Srgfault\n");
 
     state.source = gst_element_factory_make("uridecodebin", "source");
     state.audio_converter = gst_element_factory_make("audioconvert", "audio-converter");
