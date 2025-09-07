@@ -1,4 +1,3 @@
-#include "glib-object.h"
 #include "glib.h"
 #include "gst/gstbus.h"
 #include "gst/gstcaps.h"
