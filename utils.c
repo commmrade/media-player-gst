@@ -1,7 +1,10 @@
 #include "utils.h"
 #include "glib.h"
+#include <bits/getopt_core.h>
 #include <stdio.h>
 #include <getopt.h>
+#include <stdlib.h>
+#include <string.h>
 
 bool file_exists(const char* filepath) {
     bool result;
@@ -15,47 +18,6 @@ bool file_exists(const char* filepath) {
     return result;
 }
 
-gboolean parse_is_audio_only(int *argc, char*** argv, int *error) {
-    static const struct option long_options[] = {
-        {"audio", no_argument, 0, 0},
-        {"video", no_argument, 0, 0},
-        {0, 0, 0, 0}
-    };
-    int option_index;
-
-    int r = getopt_long(*argc, *argv, "av", (const struct option*)&long_options, &option_index);
-    if (r == -1) {
-        *error = -1;
-        return FALSE;
-    }
-
-    int is_audio_only;
-    switch (r) {
-        case 0: {
-            const char* name = long_options[option_index].name;
-            if (!strcmp(name, "audio")) {
-                is_audio_only = 1;
-            } else if (!strcmp(name, "video")) {
-                is_audio_only = 0;
-            }
-            break;
-        }
-        case 'a': {
-            is_audio_only = 1;
-            break;
-        } 
-        case 'v': {
-            is_audio_only = 0;
-            break;
-        }
-        default: {
-            is_audio_only = 0;
-            break;
-        }
-    }
-    *error = 0;
-    return is_audio_only;
-}
 
 gboolean is_audio_only(const char* filepath) {
     const char *audio_exts[] = {
@@ -85,4 +47,120 @@ gboolean is_audio_only(const char* filepath) {
 
     if (is_video) return FALSE;
     return TRUE;
+}
+
+static void parse_long_option(const char* option_name, Settings* settings) {
+    if (!strcmp(option_name, "audio")) {
+        settings->is_audio_only = TRUE;
+    } else if (!strcmp(option_name, "video")) {
+        settings->is_audio_only = FALSE;
+    } else if (!strcmp(option_name, "volume")) {
+        const char* double_volume_str = optarg;
+        char *result = NULL;
+        double volume = strtod(double_volume_str, &result);
+
+        if (result && *double_volume_str == *result) {
+            g_printerr("Error when converting to double\n");
+            return;
+        } else if (volume > 1. || volume < .0) {
+            g_print("Volume can range from 0.0 to 1.0 only\n");
+        }
+
+        settings->volume = volume;
+    } else if (!strcmp(option_name, "balance")) {
+        const char* float_balance_str = optarg;
+        char* result = NULL;
+        float balance = strtof(float_balance_str, &result);
+
+        if (result && *float_balance_str == *result) {
+            g_printerr("Erro when converting to float\n");
+            return;
+        } else if (balance < -1. || balance > 1.) {
+            g_print("Balance can range from -1.0 to 1.0 only\n");
+            return;
+        }
+
+        settings->balance = balance;
+    } else if (!strcmp(option_name, "lowpass")) {
+        settings->pass_type = PassLow;
+    } else if (!strcmp(option_name, "highpass")) {
+        settings->pass_type = PassHigh;
+    } else if (!strcmp(option_name, "cutoff")) {
+        const char* float_cutoff_str = optarg;
+        char* result = NULL;
+        float cutoff = strtof(float_cutoff_str, &result);
+
+        if (result && *float_cutoff_str == *result) {
+            g_printerr("Erro when converting to float\n");
+            return;
+        } else if (cutoff < .0f || cutoff > 100000.f) {
+            g_print("Cutoff can range from 0.0 to 100000.0 only\n");
+            return;
+        }
+
+        settings->pass_cutoff = cutoff;
+    }
+}
+
+void settings_set_default(Settings* settings) {
+    settings->path = NULL;
+    settings->is_audio_only = FALSE;
+    settings->volume = 1.0;
+    settings->balance = .0f;
+
+    settings->pass_type = PassNone;
+    settings->pass_cutoff = .0f;
+}
+
+void settings_parse_cli(Settings *settings, int *argc, char ***argv, int *error) {
+    settings_set_default(settings);
+
+    static const struct option long_options[] = {
+    {"path", required_argument, 0, 0},
+    {"audio", no_argument, 0, 0},
+    {"video", no_argument, 0, 0},
+    {"volume", required_argument, 0, 0},
+    {"balance", required_argument, 0, 0},
+    {"lowpass", no_argument, 0, 0},
+    {"highpass", no_argument, 0, 0},
+    {"cutoff", required_argument, 0, 0},
+    {0, 0, 0, 0}
+    };
+
+    while (TRUE) {
+        int option_index;
+
+        int r = getopt_long(*argc, *argv, "p:av", (const struct option*)&long_options, &option_index);
+        if ((char)r == '?') {
+            *error = -1;
+            return;
+        }
+        if (r == -1) {
+            break;
+        }
+        switch (r) {
+            case 0: {
+                parse_long_option(long_options[option_index].name, settings);
+                break;
+            }
+            case 'p': {
+                settings->path = strdup(optarg);
+                break;
+            }
+            case 'a': {
+                settings->is_audio_only = TRUE;
+                break;
+            } 
+            case 'v': {
+                settings->is_audio_only = FALSE;
+                break;
+            }
+            default: {
+                settings->is_audio_only = FALSE;
+                break;
+            }
+        }
+    }
+    
+    *error = 0;
 }
