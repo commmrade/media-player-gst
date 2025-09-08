@@ -13,7 +13,6 @@
 #include <stdio.h>
 #include <gst/gst.h>
 #include <stdlib.h>
-#include <string.h>
 #include <getopt.h>
 #include "utils.h"
 
@@ -45,7 +44,7 @@ static void handle_message(GstMessage *message, State *state);
 static void pad_added_signal (GstElement *self, GstPad *new_pad, State* state);
 
 
-static gboolean add_elements_and_link(State* state, Settings* settings) {
+static gboolean state_add_and_link_elements(State* state, Settings* settings) {
      gst_bin_add_many(GST_BIN(state->pipeline), state->source, state->audio_converter, state->audio_resampler, state->audio_sink,/* Filters */ state->volume, state->panorama, NULL);
     if (settings->pass_type != PassNone) {
         gst_bin_add_many(GST_BIN(state->pipeline), state->pass_filter, NULL);
@@ -79,7 +78,7 @@ static gboolean add_elements_and_link(State* state, Settings* settings) {
     return TRUE;
 }
 
-static gboolean create_all_elements(State* state, Settings* settings) {
+static gboolean state_create_all_elements(State* state, Settings* settings) {
     state->source = gst_element_factory_make("uridecodebin", "source");
     state->audio_converter = gst_element_factory_make("audioconvert", "audio-converter");
     state->audio_resampler = gst_element_factory_make("audioresample", "audio-resampler");
@@ -116,19 +115,13 @@ static gboolean create_all_elements(State* state, Settings* settings) {
     return TRUE;
 }
 
-static void set_filter_values(State* state, Settings* settings) {
+static void state_setup_filter_values_from_settings(State* state, Settings* settings) {
     g_object_set(state->volume, "volume", settings->volume, NULL);
     g_object_set(state->panorama, "panorama", settings->balance, NULL);
     if (settings->pass_type != PassNone) {
         g_object_set(state->pass_filter, "mode", settings->pass_type, NULL);
         g_object_set(state->pass_filter, "cutoff", settings->pass_cutoff, NULL);
     }
-}
-
-static char* get_file_uri(const char* absolute_path) {
-    char* full_path = malloc(strlen(FILE_PREFIX) + strlen(absolute_path) + 1); // +1 for \0
-    sprintf(full_path, "%s%s", FILE_PREFIX, absolute_path);
-    return full_path;
 }
 
 int main(int argc, char** argv) {
@@ -156,7 +149,7 @@ int main(int argc, char** argv) {
     }
     state.is_audio_only = settings.is_audio_only;
     
-    if (!create_all_elements(&state, &settings)) {
+    if (!state_create_all_elements(&state, &settings)) {
         return -1;
     }
     
@@ -168,20 +161,21 @@ int main(int argc, char** argv) {
 
     // Load a file, use abslute path
     // TODO: Support files from web
-    char* full_path = get_file_uri(settings.path);
-    if (!file_exists(settings.path)) {
+    char* full_path = settings_get_filepath(&settings);
+    if (!file_exists(settings.path)) { // only if its a file
         g_printerr("Such file does not exist\n");
         gst_element_set_state(state.pipeline, GST_STATE_NULL);
         g_object_unref(state.pipeline);
         return -1;
     }
+
     g_object_set(state.source, "uri", full_path, NULL);
 
     // Setup filters
-    set_filter_values(&state, &settings);
+    state_setup_filter_values_from_settings(&state, &settings);
 
     // Add elemnts to pipeline and link
-    if (!add_elements_and_link(&state, &settings)) {
+    if (!state_add_and_link_elements(&state, &settings)) {
         gst_element_set_state(state.pipeline, GST_STATE_NULL);
         g_object_unref(state.pipeline);
         return -1;
@@ -212,6 +206,7 @@ exit:
     gst_element_set_state(state.pipeline, GST_STATE_NULL);
     g_object_unref(state.pipeline);
     free(full_path);
+    free(settings.path);
     return 0;
 }
 

@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-bool file_exists(const char* filepath) {
+gboolean file_exists(const char* filepath) {
     bool result;
     FILE* f = fopen(filepath, "r");
     if (f) {
@@ -110,6 +110,12 @@ void settings_set_default(Settings* settings) {
 
     settings->pass_type = PassNone;
     settings->pass_cutoff = .0f;
+}
+
+char* settings_get_filepath(Settings* settings) { // TODO: https url or file uri
+    char* full_path = malloc(strlen(FILE_PREFIX) + strlen(settings->path) + 1); // +1 for \0
+    sprintf(full_path, "%s%s", FILE_PREFIX, settings->path);
+    return full_path;
 }
 
 void settings_parse_cli(Settings *settings, int *argc, char ***argv, int *error) {
