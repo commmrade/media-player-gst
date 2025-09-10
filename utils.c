@@ -50,7 +50,9 @@ gboolean is_audio_only(const char* filepath) {
 }
 
 static void parse_long_option(const char* option_name, Settings* settings) {
-    if (!strcmp(option_name, "audio")) {
+    if (!strcmp(option_name, "path")) {
+        settings->filepath = strdup(optarg);
+    } else if (!strcmp(option_name, "audio")) {
         settings->is_audio_only = TRUE;
     } else if (!strcmp(option_name, "video")) {
         settings->is_audio_only = FALSE;
@@ -103,7 +105,8 @@ static void parse_long_option(const char* option_name, Settings* settings) {
 }
 
 void settings_set_default(Settings* settings) {
-    settings->path = NULL;
+    settings->filepath = NULL;
+
     settings->is_audio_only = FALSE;
     settings->volume = 1.0;
     settings->balance = .0f;
@@ -112,10 +115,26 @@ void settings_set_default(Settings* settings) {
     settings->pass_cutoff = .0f;
 }
 
-char* settings_get_filepath(Settings* settings) { // TODO: https url or file uri
-    char* full_path = malloc(strlen(FILE_PREFIX) + strlen(settings->path) + 1); // +1 for \0
-    sprintf(full_path, "%s%s", FILE_PREFIX, settings->path);
-    return full_path;
+char* settings_get_file_uri(Settings* settings) { // TODO: https url or file uri
+    if (settings->filepath == NULL) {
+        g_printerr("File was not set, aborting...\n");
+        return NULL;
+    }
+
+    // TODO: Maybe more flexible deduction
+    if (strstr(settings->filepath, "https://") || strstr(settings->filepath, "http://")) {
+        return strdup(settings->filepath); 
+        // To unify the behaviour between webpath and filepath, we dup this string, so the user has to take care of it, just like with filepath (there is malloc)
+    } else {
+        if (!file_exists(settings->filepath)) { // only if its a file
+            g_printerr("Such file does not exist\n");
+            return NULL;
+        }
+        // consturct a file://{path} format string
+        char* full_path = malloc(strlen(FILE_PREFIX) + strlen(settings->filepath) + 1); // +1 for \0
+        sprintf(full_path, "%s%s", FILE_PREFIX, settings->filepath);
+        return full_path;
+    }
 }
 
 void settings_parse_cli(Settings *settings, int *argc, char ***argv, int *error) {
@@ -150,7 +169,7 @@ void settings_parse_cli(Settings *settings, int *argc, char ***argv, int *error)
                 break;
             }
             case 'p': {
-                settings->path = strdup(optarg);
+                settings->filepath = strdup(optarg);
                 break;
             }
             case 'a': {

@@ -15,114 +15,13 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include "utils.h"
+#include "state.h"
 
-typedef struct State {
-    GstElement* pipeline;
-    GstElement* source;
-    
-    GstElement* audio_converter;
-
-    GstElement* video_converter;
-    
-    GstElement* audio_resampler;
-
-    GstElement* audio_sink;
-    GstElement* video_sink;
-
-    // Filters, effects
-    GstElement* volume;
-    GstElement* panorama; // balance left-ear right-ear effect
-    GstElement* pass_filter; // low pass, high pass
-
-    gboolean is_audio_only;
-
-    gboolean is_running;
-} State;
 
 
 static void handle_message(GstMessage *message, State *state);
 static void pad_added_signal (GstElement *self, GstPad *new_pad, State* state);
 
-
-static gboolean state_add_and_link_elements(State* state, Settings* settings) {
-     gst_bin_add_many(GST_BIN(state->pipeline), state->source, state->audio_converter, state->audio_resampler, state->audio_sink,/* Filters */ state->volume, state->panorama, NULL);
-    if (settings->pass_type != PassNone) {
-        gst_bin_add_many(GST_BIN(state->pipeline), state->pass_filter, NULL);
-    }
-
-    if (!state->is_audio_only) {
-        gst_bin_add_many(GST_BIN(state->pipeline), state->video_converter, state->video_sink, NULL);
-    }
-
-    // Link audio stuff
-    if (settings->pass_type != PassNone && !gst_element_link_many(state->audio_converter, state->audio_resampler, /* audio filters, video effects -> */ state->volume, state->panorama, state->pass_filter, /* <- filters end*/ state->audio_sink, NULL)) {
-        g_printerr("Unable to link audio elements\n");
-        g_object_unref(state->pipeline);
-        return FALSE;
-    } else if (settings->pass_type == PassNone && !gst_element_link_many(state->audio_converter, state->audio_resampler, /* audio filters, video effects -> */ state->volume, state->panorama, /* <- filters end*/ state->audio_sink, NULL)) {
-        g_printerr("Unable to link audio elements\n");
-        g_object_unref(state->pipeline);
-        return FALSE;
-    }
-    
-
-    // Link video stuff
-    if (!state->is_audio_only) {
-        if (!gst_element_link_many(state->video_converter, state->video_sink, NULL)) {
-            g_printerr("Unable to link audio elements\n");
-            g_object_unref(state->pipeline);
-            return FALSE;
-        }
-    }
-
-    return TRUE;
-}
-
-static gboolean state_create_all_elements(State* state, Settings* settings) {
-    state->source = gst_element_factory_make("uridecodebin", "source");
-    state->audio_converter = gst_element_factory_make("audioconvert", "audio-converter");
-    state->audio_resampler = gst_element_factory_make("audioresample", "audio-resampler");
-    state->audio_sink = gst_element_factory_make("autoaudiosink", "audio-sink");
-
-    // Create filters, effects
-    // ...
-    state->volume = gst_element_factory_make("volume", "volume-controller");
-    state->panorama = gst_element_factory_make("audiopanorama", "panorama");
-
-    if (settings->pass_type != PassNone) {
-        state->pass_filter = gst_element_factory_make("audiocheblimit", "passfilter");
-        if (!state->pass_filter) {
-            g_printerr("Could not create pass filter");
-            return FALSE;
-        }
-    }
-    
-    if (!state->is_audio_only) {
-        state->video_converter = gst_element_factory_make("videoconvert", "video-converter");
-        state->video_sink = gst_element_factory_make("autovideosink", "video-sink");
-    }
-    
-    if (!state->source || !state->audio_converter || !state->audio_resampler || !state->audio_sink || /* Filters */ !state->volume || !state->panorama) {
-        g_printerr("Could not create all elements\n");
-        return FALSE;
-    }
-    if (!state->is_audio_only) {
-        if (!state->video_converter || !state->video_sink) {
-            g_printerr("Could not create all video elements\n");
-            return FALSE;
-        }
-    }
-    return TRUE;
-}
-
-static void state_setup_filter_values_from_settings(State* state, Settings* settings) {
-    g_object_set(state->volume, "volume", settings->volume, NULL);
-    g_object_set(state->panorama, "panorama", settings->balance, NULL);
-    if (settings->pass_type != PassNone) {
-        g_object_set(state->pass_filter, "mode", settings->pass_type, NULL);
-        g_object_set(state->pass_filter, "cutoff", settings->pass_cutoff, NULL);
-    }
-}
 
 int main(int argc, char** argv) {
     if (argc < 2) {
@@ -160,22 +59,21 @@ int main(int argc, char** argv) {
     }
 
     // Load a file, use abslute path
-    // TODO: Support files from web
-    char* full_path = settings_get_filepath(&settings);
-    if (!file_exists(settings.path)) { // only if its a file
-        g_printerr("Such file does not exist\n");
-        gst_element_set_state(state.pipeline, GST_STATE_NULL);
+    char* file_uri = settings_get_file_uri(&settings); // it may be a local file or remote one
+    if (!file_uri) {
         g_object_unref(state.pipeline);
         return -1;
     }
 
-    g_object_set(state.source, "uri", full_path, NULL);
+    // Set uri property to uridecodebin which is reponsible for downloading/loading media
+    g_object_set(state.source, "uri", file_uri, NULL);
 
     // Setup filters
     state_setup_filter_values_from_settings(&state, &settings);
 
-    // Add elemnts to pipeline and link
-    if (!state_add_and_link_elements(&state, &settings)) {
+    // Add elements to pipeline and link
+    state_add_elements(&state, &settings);
+    if (!state_link_elements(&state, &settings)) {
         gst_element_set_state(state.pipeline, GST_STATE_NULL);
         g_object_unref(state.pipeline);
         return -1;
@@ -192,6 +90,7 @@ int main(int argc, char** argv) {
         g_object_unref(state.pipeline);
         return -1;
     }
+
     GstBus* bus = NULL;
     GstMessage* message = NULL;
     bus = gst_element_get_bus(state.pipeline);
@@ -203,10 +102,10 @@ int main(int argc, char** argv) {
     } while (state.is_running);
 exit:
     g_object_unref(bus);
+    free(file_uri);
+    free(settings.filepath);
     gst_element_set_state(state.pipeline, GST_STATE_NULL);
     g_object_unref(state.pipeline);
-    free(full_path);
-    free(settings.path);
     return 0;
 }
 
@@ -270,8 +169,6 @@ static void handle_message(GstMessage *message, State *state) {
             break;
         }
         case GST_MESSAGE_EOS: {
-            g_print("EOS Reached\n");
-
             state->is_running = FALSE;
             break;
         }

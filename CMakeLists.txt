@@ -6,7 +6,7 @@ find_package(PkgConfig REQUIRED)
 # Базовый GStreamer
 pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0)
 
-add_executable(proj main.c utils.c)
+add_executable(proj main.c utils.c state.c)
 
 # Инклуды
 target_include_directories(proj PRIVATE

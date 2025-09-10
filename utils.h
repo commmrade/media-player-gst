@@ -16,7 +16,7 @@ typedef enum PassType {
 } PassType;
 
 typedef struct Settings {
-    char* path; // default null
+    char* filepath; // default null
     gboolean is_audio_only; // default false
     double volume; // 1.0 for default (0.0 to 1.0)
     float balance; // 0.0f for default
@@ -26,7 +26,7 @@ typedef struct Settings {
 } Settings;
 
 void settings_parse_cli(Settings *settings, int *argc, char ***argv, int *error);
-char* settings_get_filepath(Settings* settings);
+char* settings_get_file_uri(Settings* settings);
 
 
 gboolean file_exists(const char* filepath); 
