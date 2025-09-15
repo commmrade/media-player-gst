@@ -78,6 +78,7 @@ static void parse_long_option(const char* option_name, Settings* settings) {
             return;
         }
 
+        settings->has_volume = TRUE;
         settings->volume = volume;
     } else if (!strcmp(option_name, "balance")) {
         const char* float_balance_str = optarg;
@@ -106,6 +107,7 @@ static void parse_long_option(const char* option_name, Settings* settings) {
             return;
         }
 
+        settings->has_panorama = TRUE;
         settings->balance = balance;
     } else if (!strcmp(option_name, "lowpass")) {
         settings->pass_type = PassLow;
@@ -157,6 +159,8 @@ static void parse_long_option(const char* option_name, Settings* settings) {
             g_printerr("invalid characters in echo delay: %s\n", optarg);
             return;
         }
+
+        settings->has_echo = TRUE;
         settings->echo_delay = (uint64_t)tmp;
     } else if (!strcmp(option_name, "feedback")) {
         const char* float_feedback_str = optarg;
@@ -179,6 +183,7 @@ static void parse_long_option(const char* option_name, Settings* settings) {
             return;
         }
 
+        settings->has_echo = TRUE;
         settings->echo_feedback = feedback;
     } else if (!strcmp(option_name, "intensity")) {
         const char* float_intensity_str = optarg;
@@ -201,6 +206,7 @@ static void parse_long_option(const char* option_name, Settings* settings) {
             return;
         }
 
+        settings->has_echo = TRUE;
         settings->echo_intensity = intensity;
     }
 }
@@ -218,6 +224,10 @@ void settings_set_default(Settings* settings) {
     settings->echo_delay = 1;
     settings->echo_feedback = .0f;
     settings->echo_intensity = .0f;
+
+    settings->has_echo = FALSE;
+    settings->has_panorama = FALSE;
+    settings->has_volume = FALSE;
 }
 
 char* settings_get_file_uri(Settings* settings) { // TODO: https url or file uri

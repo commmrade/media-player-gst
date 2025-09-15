@@ -19,12 +19,17 @@ typedef enum PassType {
 typedef struct Settings {
     char* filepath; // default null
     gboolean is_audio_only; // default false
+
+    gboolean has_volume; // false by default
     double volume; // 1.0 for default (0.0 to 1.0)
+
+    gboolean has_panorama; // false by default
     float balance; // 0.0f for default
 
     PassType pass_type; // Default none
     float pass_cutoff; // Defalt 0
 
+    gboolean has_echo; // false by default
     uint64_t echo_delay; // in nanoseconds, default 1
     float echo_feedback; // default 0
     float echo_intensity; // default 0
