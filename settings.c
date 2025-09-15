@@ -1,5 +1,6 @@
 #include "settings.h"
 #include "glib.h"
+#include "glibconfig.h"
 #include <bits/getopt_core.h>
 #include <stdio.h>
 #include <getopt.h>
@@ -41,6 +42,90 @@ static gboolean is_audio_only_by_filepath(const char* filepath) {
     return (is_video == FALSE);
 }
 
+static gboolean parse_double(const char* double_str, double* min, double* max, double* result) {
+    char* endptr = NULL;
+    errno = 0;
+
+    double value = strtod(double_str, &endptr);
+
+    if (endptr == double_str) {
+        g_printerr("no digits found when converting to double: %s\n", double_str);
+        return FALSE;
+    }
+    if (*endptr != '\0') {
+        g_printerr("invalid characters after number: %s\n", endptr);
+        return FALSE;
+    }
+    if (errno == ERANGE) {
+        g_printerr("volume value out of range: %s\n", double_str);
+        return FALSE;
+    }
+
+    if ((min && max) && (value < *min || value > *max)) {
+        g_printerr("volume can range from 0.0 to 1.0 only (got %f)\n", value);
+        return FALSE;
+    }
+
+    *result = value;
+    return TRUE;
+}
+
+static gboolean parse_float(const char* float_str, float* min, float* max, float* result) {
+    char* endptr = NULL;
+    errno = 0;
+
+    float value = strtof(float_str, &endptr);
+
+    if (endptr == float_str) {
+        g_printerr("no digits found when converting to floats: %s\n", float_str);
+        return FALSE;
+    }
+    if (*endptr != '\0') {
+        g_printerr("invalid characters after number: %s\n", endptr);
+        return FALSE;
+    }
+    if (errno == ERANGE) {
+        g_printerr("volume value out of range: %s\n", float_str);
+        return FALSE;
+    }
+
+    if ((min && max) && (value < *min || value > *max)) {
+        g_printerr("volume can range from 0.0 to 1.0 only (got %f)\n", value);
+        return FALSE;
+    }
+
+    *result = value;
+    return TRUE;
+}
+
+static gboolean parse_ul(const char* ul_str, guint64* min, guint64* max, guint64* result) {
+    char* endptr = NULL;
+    errno = 0;
+
+    guint64 value = strtoul(ul_str, &endptr, 10);
+
+    if (endptr == ul_str) {
+        g_printerr("no digits found when converting to int: %s\n", ul_str);
+        return FALSE;
+    }
+    if (*endptr != '\0') {
+        g_printerr("invalid characters after number: %s\n", endptr);
+        return FALSE;
+    }
+    if (errno == ERANGE) {
+        g_printerr("volume value out of range: %s\n", ul_str);
+        return FALSE;
+    }
+
+    if ((min && max) && (value < *min || value > *max)) {
+        g_printerr("volume can range from 0.0 to 1.0 only (got %ld)\n", value);
+        return FALSE;
+    }
+
+    *result = value;
+    return TRUE;
+}
+
 static void parse_long_option(const char* option_name, Settings* settings) {
     // TODO: FACTOR OUT ARITHMETIC CONVERSIONS FROM STR INTO SEPARATE FUNCTIONS
     if (!strcmp(option_name, "path")) {
@@ -54,160 +139,49 @@ static void parse_long_option(const char* option_name, Settings* settings) {
     } else if (!strcmp(option_name, "video")) {
         settings->is_audio_only = FALSE;
     } else if (!strcmp(option_name, "volume")) {
-        const char* double_volume_str = optarg;
-        char* endptr = NULL;
-        errno = 0;
-
-        double volume = strtod(double_volume_str, &endptr);
-
-        if (endptr == double_volume_str) {
-            g_printerr("no digits found when converting to double: %s\n", double_volume_str);
-            return;
+        double min = 0.0; double max = 1.0;
+        double result;
+        if (parse_double(optarg, &min, &max, &result)) {
+            settings->has_volume = TRUE;
+            settings->volume = result;
         }
-        if (*endptr != '\0') {
-            g_printerr("invalid characters after number: %s\n", endptr);
-            return;
-        }
-        if (errno == ERANGE) {
-            g_printerr("volume value out of range: %s\n", double_volume_str);
-            return;
-        }
-
-        if (volume < 0.0 || volume > 1.0) {
-            g_printerr("volume can range from 0.0 to 1.0 only (got %f)\n", volume);
-            return;
-        }
-
-        settings->has_volume = TRUE;
-        settings->volume = volume;
     } else if (!strcmp(option_name, "balance")) {
-        const char* float_balance_str = optarg;
-        char* endptr = NULL;
-        errno = 0;
-
-        float balance = strtof(float_balance_str, &endptr);
-
-        // Check conversion errors
-        if (endptr == float_balance_str) {
-            g_printerr("no digits found when converting to float: %s\n", float_balance_str);
-            return;
+        
+        float min = -1.0f; float max = 1.0f;
+        float result;
+        if (parse_float(optarg, &min, &max, &result)) {
+            settings->has_panorama = TRUE;
+            settings->balance = result;
         }
-        if (*endptr != '\0') {
-            g_printerr("invalid characters after number: %s\n", endptr);
-            return;
-        }
-        if (errno == ERANGE) {
-            g_printerr("balance value out of range: %s\n", float_balance_str);
-            return;
-        }
-
-        // Check bounds
-        if (balance < -1.0f || balance > 1.0f) {
-            g_printerr("Balance can range from -1.0 to 1.0 only (got %f)\n", balance);
-            return;
-        }
-
-        settings->has_panorama = TRUE;
-        settings->balance = balance;
     } else if (!strcmp(option_name, "lowpass")) {
         settings->pass_type = PassLow;
     } else if (!strcmp(option_name, "highpass")) {
         settings->pass_type = PassHigh;
     } else if (!strcmp(option_name, "cutoff")) {
-        const char* float_cutoff_str = optarg;
-        char* endptr = NULL;
-        errno = 0;
-
-        float cutoff = strtof(float_cutoff_str, &endptr);
-
-        // check conversion errors
-        if (endptr == float_cutoff_str) {
-            g_printerr("no digits found when converting to float: %s\n", float_cutoff_str);
-            return;
+        float min = 0.0f; float max = 100000.0f;
+        float result;
+        if (parse_float(optarg, &min, &max, &result)) {
+            settings->pass_cutoff = result;
         }
-        if (*endptr != '\0') {
-            g_printerr("invalid characters after number: %s\n", endptr);
-            return;
-        }
-        if (errno == ERANGE) {
-            g_printerr("value out of range: %s\n", float_cutoff_str);
-            return;
-        }
-
-        // check bounds
-        if (cutoff < 0.0f || cutoff > 100000.0f) {
-            g_printerr("Cutoff can range from 0.0 to 100000.0 only (got %f)\n", cutoff);
-            return;
-        }
-
-        settings->pass_cutoff = cutoff;
     } else if (!strcmp(option_name, "delay")) {
-        char *endptr = NULL;
-        errno = 0;
 
-        unsigned long tmp = strtoul(optarg, &endptr, 10);
-
-        if (errno == ERANGE) {
-            g_printerr("echo delay out of range: %s\n", optarg);
-            return;
+        guint64 result;
+        if (parse_ul(optarg, NULL, NULL, &result)) {
+            settings->has_echo = TRUE;
+            settings->echo_delay = result;
         }
-        if (endptr == optarg) {
-            g_printerr("invalid echo delay: %s\n", optarg);
-            return;;
-        }
-        if (*endptr != '\0') {
-            g_printerr("invalid characters in echo delay: %s\n", optarg);
-            return;
-        }
-
-        settings->has_echo = TRUE;
-        settings->echo_delay = (uint64_t)tmp;
     } else if (!strcmp(option_name, "feedback")) {
-        const char* float_feedback_str = optarg;
-        char* endptr = NULL;
-        errno = 0;
-
-        float feedback = strtof(float_feedback_str, &endptr);
-
-        // check conversion errors
-        if (endptr == float_feedback_str) {
-            g_printerr("no digits found when converting to float: %s\n", float_feedback_str);
-            return;
+        float result;
+        if (parse_float(optarg, NULL, NULL, &result)) {
+            settings->has_echo = TRUE;
+            settings->echo_feedback = result;
         }
-        if (*endptr != '\0') {
-            g_printerr("invalid characters after number: %s\n", endptr);
-            return;
-        }
-        if (errno == ERANGE) {
-            g_printerr("value out of range: %s\n", float_feedback_str);
-            return;
-        }
-
-        settings->has_echo = TRUE;
-        settings->echo_feedback = feedback;
     } else if (!strcmp(option_name, "intensity")) {
-        const char* float_intensity_str = optarg;
-        char* endptr = NULL;
-        errno = 0;
-
-        float intensity = strtof(float_intensity_str, &endptr);
-
-        // check conversion errors
-        if (endptr == float_intensity_str) {
-            g_printerr("no digits found when converting to float: %s\n", float_intensity_str);
-            return;
+        float result;
+        if (parse_float(optarg, NULL, NULL, &result)) {
+            settings->has_echo = TRUE;
+            settings->echo_intensity = result;
         }
-        if (*endptr != '\0') {
-            g_printerr("invalid characters after number: %s\n", endptr);
-            return;
-        }
-        if (errno == ERANGE) {
-            g_printerr("value out of range: %s\n", float_intensity_str);
-            return;
-        }
-
-        settings->has_echo = TRUE;
-        settings->echo_intensity = intensity;
     }
 }
 

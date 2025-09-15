@@ -30,7 +30,7 @@ typedef struct Settings {
     float pass_cutoff; // Defalt 0
 
     gboolean has_echo; // false by default
-    uint64_t echo_delay; // in nanoseconds, default 1
+    guint64 echo_delay; // in nanoseconds, default 1
     float echo_feedback; // default 0
     float echo_intensity; // default 0
 } Settings;
