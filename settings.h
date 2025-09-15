@@ -2,6 +2,7 @@
 #define __UTILS__H
 #include "glib.h"
 #include <stdbool.h>
+#include <stdint.h>
 
 #define FILE_PREFIX "file://"
 #define MEDIA_AUDIO 0b00000001
@@ -23,14 +24,15 @@ typedef struct Settings {
 
     PassType pass_type; // Default none
     float pass_cutoff; // Defalt 0
+
+    uint64_t echo_delay; // in nanoseconds, default 1
+    float echo_feedback; // default 0
+    float echo_intensity; // default 0
 } Settings;
 
 void settings_parse_cli(Settings *settings, int *argc, char ***argv, int *error);
 char* settings_get_file_uri(Settings* settings);
 
-
-gboolean file_exists(const char* filepath); 
-gboolean is_audio_only(const char* filepath);
 // gboolean parse_is_audio_only(int *argc, char*** argv, int *error);
 
 

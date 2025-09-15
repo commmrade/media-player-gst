@@ -3,7 +3,7 @@
 
 
 #include "gst/gstelement.h"
-#include "utils.h"
+#include "settings.h"
 
 typedef struct State {
     GstElement* pipeline;
@@ -22,6 +22,8 @@ typedef struct State {
     GstElement* volume;
     GstElement* panorama; // balance left-ear right-ear effect
     GstElement* pass_filter; // low pass, high pass
+    GstElement* audio_echo; // for echo | reverb
+    //
 
     gboolean is_audio_only;
 

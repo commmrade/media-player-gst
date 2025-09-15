@@ -4,17 +4,16 @@
 #include "gst/gstcaps.h"
 #include "gst/gstclock.h"
 #include "gst/gstelement.h"
-#include "gst/gstelementfactory.h"
 #include "gst/gstmessage.h"
 #include "gst/gstpad.h"
 #include "gst/gstpipeline.h"
 #include "gst/gststructure.h"
-#include "gst/gstutils.h"
 #include <stdio.h>
 #include <gst/gst.h>
 #include <stdlib.h>
 #include <getopt.h>
-#include "utils.h"
+#include <string.h>
+#include "settings.h"
 #include "state.h"
 
 
@@ -35,6 +34,7 @@ int main(int argc, char** argv) {
     Settings settings;
 
     // TODO: get back auto detection by file extension
+    // if (strstr(argv[1], const char *))
     // gboolean is_only_audio = is_audio_only(argv[1]);
     // settings.is_audio_only = is_only_audio;
 
@@ -47,11 +47,11 @@ int main(int argc, char** argv) {
         return -1;
     }
     state.is_audio_only = settings.is_audio_only;
-    
+
     if (!state_create_all_elements(&state, &settings)) {
         return -1;
     }
-    
+
     state.pipeline = gst_pipeline_new("tiktok-pipeline");
     if (!state.pipeline) {
         g_printerr("Could not create a pipeline\n");
@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
 
     // link source to pad added handler
     g_signal_connect(state.source, "pad-added", G_CALLBACK(pad_added_signal), &state);
-    
+
     // Start playing
     GstStateChangeReturn ret = gst_element_set_state(state.pipeline, GST_STATE_PLAYING);
     if (ret == GST_STATE_CHANGE_FAILURE) {
@@ -118,7 +118,7 @@ static void pad_added_signal (GstElement *self, GstPad *new_pad, State* state) {
 
     if (g_str_has_prefix(new_pad_type, "audio/x-raw")) {
         converter_sink = gst_element_get_static_pad(state->audio_converter, "sink");
-        
+
         // do nothing if already linked
         if (gst_pad_is_linked(converter_sink)) {
             g_print("Audio pad is already linked\n");
@@ -152,7 +152,7 @@ exit:
     if (new_pad_caps) {
         gst_caps_unref(new_pad_caps);
     }
-}   
+}
 
 static void handle_message(GstMessage *message, State *state) {
     switch (GST_MESSAGE_TYPE(message)) {
