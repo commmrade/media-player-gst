@@ -94,7 +94,6 @@ int main(int argc, char** argv) {
     GstBus* bus = NULL;
     GstMessage* message = NULL;
     bus = gst_element_get_bus(state.pipeline);
-    ;
     do {
         message = gst_bus_timed_pop_filtered(bus, GST_CLOCK_TIME_NONE, GST_MESSAGE_ERROR | GST_MESSAGE_EOS);
         if (!message) continue;
