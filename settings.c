@@ -146,7 +146,6 @@ static void parse_long_option(const char* option_name, Settings* settings) {
             settings->volume = result;
         }
     } else if (!strcmp(option_name, "balance")) {
-        
         float min = -1.0f; float max = 1.0f;
         float result;
         if (parse_float(optarg, &min, &max, &result)) {
@@ -182,6 +181,18 @@ static void parse_long_option(const char* option_name, Settings* settings) {
             settings->has_echo = TRUE;
             settings->echo_intensity = result;
         }
+    } else if (!strcmp(option_name, "aspeed")) {
+        float result;
+        if (parse_float(optarg, NULL, NULL, &result)) {
+            settings->has_pitch = TRUE;
+            settings->pitch_rate = result;
+        }
+    } else if (!strcmp(option_name, "pitch")) {
+        float result;
+        if (parse_float(optarg, NULL, NULL, &result)) {
+            settings->has_pitch = TRUE;
+            settings->pitch_pitch = result;
+        }
     }
 }
 
@@ -199,9 +210,13 @@ void settings_set_default(Settings* settings) {
     settings->echo_feedback = .0f;
     settings->echo_intensity = .0f;
 
+    settings->pitch_pitch = 1.0f;
+    settings->pitch_rate = 1.0f;
+
     settings->has_echo = FALSE;
     settings->has_panorama = FALSE;
     settings->has_volume = FALSE;
+    settings->has_pitch = FALSE;
 }
 
 char* settings_get_file_uri(Settings* settings) { // TODO: https url or file uri
@@ -243,6 +258,8 @@ void settings_parse_cli(Settings *settings, int *argc, char ***argv, int *error)
     {"delay", required_argument, 0, 0},
     {"feedback", required_argument, 0, 0},
     {"intensity", required_argument, 0, 0},
+    {"aspeed", required_argument, 0, 0}, // audio speed
+    {"pitch", required_argument, 0, 0},
     {0, 0, 0, 0}
     };
 

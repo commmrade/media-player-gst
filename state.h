@@ -23,6 +23,7 @@ typedef struct State {
     GstElement* panorama; // balance left-ear right-ear effect
     GstElement* pass_filter; // low pass, high pass
     GstElement* audio_echo; // for echo | reverb
+    GstElement* pitch; // for audio speed (aspeed) && pitch
     //
 
     gboolean is_audio_only;

@@ -23,7 +23,10 @@ void state_add_elements(State* state, Settings* settings) {
         gst_bin_add(GST_BIN(state->pipeline), state->audio_echo);
     }
     if (settings->pass_type != PassNone) {
-        gst_bin_add_many(GST_BIN(state->pipeline), state->pass_filter, NULL);
+        gst_bin_add(GST_BIN(state->pipeline), state->pass_filter);
+    }
+    if (settings->has_pitch) {
+        gst_bin_add(GST_BIN(state->pipeline), state->pitch);
     }
 
     if (!state->is_audio_only) {
@@ -49,6 +52,9 @@ gboolean state_link_elements(State* state, Settings* settings) {
     }
     if (settings->pass_type != PassNone) {
         g_ptr_array_add(audio_elements, state->pass_filter);
+    }
+    if (settings->has_pitch) {
+        g_ptr_array_add(audio_elements, state->pitch);
     }
 
     g_ptr_array_add(audio_elements, state->audio_sink);
@@ -98,14 +104,24 @@ gboolean state_create_all_elements(State* state, Settings* settings) {
     // }
     // state->audio_echo = gst_element_factory_make("audioecho", "reverb-filter");
     
+    // -------------------------------------------------------------
+    // Adding new filter checklist:
+    // - [ ] add new element to settings (has_<filter>, <filter>_<value>)
+    // - [ ] parse cli arguments
+    // - [ ] create a gstelement in create_all_elements
+    // - [ ] add new element to the pipeline
+    // - [ ] link new element
+    // - [ ] g_object_set new element
+    // -------------------------------------------------------------
+
     if (settings->has_volume) {
-        state->volume = gst_element_factory_make("volume", "volume-controller");
+        state->volume = gst_element_factory_make("volume", "volume-controller-filter");
         if (!state->volume) {
             g_printerr("Could not create volume filter, skipping..\n");
         }
     }
     if (settings->has_panorama) {
-        state->panorama = gst_element_factory_make("audiopanorama", "panorama");
+        state->panorama = gst_element_factory_make("audiopanorama", "panorama-filter");
         if (!state->panorama) {
             g_printerr("Could not create panorama filter, skipping..\n");
         }
@@ -120,6 +136,12 @@ gboolean state_create_all_elements(State* state, Settings* settings) {
         state->audio_echo = gst_element_factory_make("audioecho", "reverb-filter");
         if (!state->audio_echo) {
             g_printerr("Could not create echo filter, skipping...\n");
+        }
+    }
+    if (settings->has_pitch) {
+        state->pitch = gst_element_factory_make("pitch", "pitch-filter");
+        if (!state->pitch) {
+            g_printerr("Could not create pitch filter, skipping...\nn");
         }
     }
     
@@ -153,13 +175,13 @@ void state_setup_filter_values_from_settings(State* state, Settings* settings) {
     }
 
     if (settings->pass_type != PassNone) {
-        g_object_set(state->pass_filter, "mode", settings->pass_type, NULL);
-        g_object_set(state->pass_filter, "cutoff", settings->pass_cutoff, NULL);
+        g_object_set(state->pass_filter, "mode", settings->pass_type, "cutoff", settings->pass_cutoff, NULL);
     }
 
     if (settings->has_echo) {
-        g_object_set(state->audio_echo, "delay", settings->echo_delay, NULL);
-        g_object_set(state->audio_echo, "feedback", settings->echo_feedback, NULL);
-        g_object_set(state->audio_echo, "intensity", settings->echo_intensity, NULL);
+        g_object_set(state->audio_echo, "delay", settings->echo_delay, "feedback", settings->echo_feedback, "intensity", settings->echo_intensity, NULL);
+    }
+    if (settings->has_pitch) {
+        g_object_set(state->pitch, "rate", settings->pitch_rate, "pitch", settings->pitch_pitch, NULL);
     }
 }
