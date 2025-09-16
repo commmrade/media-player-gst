@@ -7,11 +7,6 @@
 #include <stdio.h>
 
 void state_add_elements(State* state, Settings* settings) {
-    // gst_bin_add_many(GST_BIN(state->pipeline), state->source, state->audio_converter, state->audio_resampler, state->audio_sink,/* Filters */ state->volume, state->panorama, state->audio_echo, NULL);
-    // if (settings->pass_type != PassNone) {
-    //     gst_bin_add_many(GST_BIN(state->pipeline), state->pass_filter, NULL);
-    // }
-
     gst_bin_add_many(GST_BIN(state->pipeline), state->source, state->audio_converter, state->audio_resampler, state->audio_sink, NULL);
     if (settings->has_volume) {
         gst_bin_add(GST_BIN(state->pipeline), state->volume);
@@ -91,19 +86,6 @@ gboolean state_create_all_elements(State* state, Settings* settings) {
     state->audio_resampler = gst_element_factory_make("audioresample", "audio-resampler");
     state->audio_sink = gst_element_factory_make("autoaudiosink", "audio-sink");
 
-    // Create filters, effects
-    // ...
-    // state->volume = gst_element_factory_make("volume", "volume-controller");
-    // state->panorama = gst_element_factory_make("audiopanorama", "panorama");
-    // if (settings->pass_type != PassNone) {
-    //     state->pass_filter = gst_element_factory_make("audiocheblimit", "passfilter");
-    //     if (!state->pass_filter) {
-    //         g_printerr("Could not create pass filter");
-    //         return FALSE;
-    //     }
-    // }
-    // state->audio_echo = gst_element_factory_make("audioecho", "reverb-filter");
-    
     // -------------------------------------------------------------
     // Adding new filter checklist:
     // - [ ] add new element to settings (has_<filter>, <filter>_<value>)

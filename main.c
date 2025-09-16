@@ -33,12 +33,6 @@ int main(int argc, char** argv) {
     State state;
     Settings settings;
 
-    // TODO: get back auto detection by file extension
-    // if (strstr(argv[1], const char *))
-    // gboolean is_only_audio = is_audio_only(argv[1]);
-    // settings.is_audio_only = is_only_audio;
-
-
     // Cmd arguments must override automatic media type detection
     int error;
     settings_parse_cli(&settings, &argc, &argv, &error);
