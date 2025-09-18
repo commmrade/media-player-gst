@@ -193,6 +193,12 @@ static void parse_long_option(const char* option_name, Settings* settings) {
             settings->has_pitch = TRUE;
             settings->pitch_pitch = result;
         }
+    } else if (!strcmp(option_name, "noisethreshold")) {
+        float result;
+        if (parse_float(optarg, NULL, NULL, &result)) {
+            settings->has_noise_reduction = TRUE;
+            settings->noise_reduction = result;
+        }
     }
 }
 
@@ -213,10 +219,13 @@ void settings_set_default(Settings* settings) {
     settings->pitch_pitch = 1.0f;
     settings->pitch_rate = 1.0f;
 
+    settings->noise_reduction = 0.0f;
+
     settings->has_echo = FALSE;
     settings->has_panorama = FALSE;
     settings->has_volume = FALSE;
     settings->has_pitch = FALSE;
+    settings->has_noise_reduction = FALSE;
 }
 
 char* settings_get_file_uri(Settings* settings) { // TODO: https url or file uri
@@ -260,6 +269,7 @@ void settings_parse_cli(Settings *settings, int *argc, char ***argv, int *error)
     {"intensity", required_argument, 0, 0},
     {"aspeed", required_argument, 0, 0}, // audio speed
     {"pitch", required_argument, 0, 0},
+    {"noisethreshold", required_argument, 0, 0},
     {0, 0, 0, 0}
     };
 
