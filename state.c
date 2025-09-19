@@ -207,7 +207,6 @@ void state_setup_filter_values_from_settings(State* state, Settings* settings) {
         g_object_set(state->pitch, "rate", settings->pitch_rate, "pitch", settings->pitch_pitch, NULL);
     }
     if (settings->has_videobalance) {
-        printf("Gray; %f\n", settings->video_saturation);
         g_object_set(state->videobalance_filter, "saturation", settings->video_saturation, NULL);
     }
     if (settings->has_colorinvert) {
