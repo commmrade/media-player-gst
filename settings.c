@@ -1,7 +1,6 @@
 #include "settings.h"
 #include "glib.h"
 #include "glibconfig.h"
-#include <bits/getopt_core.h>
 #include <stdio.h>
 #include <getopt.h>
 #include <stdlib.h>
@@ -193,6 +192,14 @@ static void parse_long_option(const char* option_name, Settings* settings) {
             settings->has_pitch = TRUE;
             settings->pitch_pitch = result;
         }
+    } else if (!strcmp(option_name, "grayscale")) {
+        double result;
+        if (parse_double(optarg, NULL, NULL, &result)) {
+            settings->has_videobalance = TRUE;
+            settings->video_saturation = result;
+        }
+    } else if (!strcmp(option_name, "colorinvert")) {
+        settings->has_colorinvert = TRUE;
     }
 }
 
@@ -212,11 +219,14 @@ void settings_set_default(Settings* settings) {
 
     settings->pitch_pitch = 1.0f;
     settings->pitch_rate = 1.0f;
+    settings->video_saturation = 1.0;
+    settings->has_colorinvert = FALSE;
 
     settings->has_echo = FALSE;
     settings->has_panorama = FALSE;
     settings->has_volume = FALSE;
     settings->has_pitch = FALSE;
+    settings->has_videobalance = FALSE;
 }
 
 char* settings_get_file_uri(Settings* settings) { // TODO: https url or file uri
@@ -260,6 +270,8 @@ void settings_parse_cli(Settings *settings, int *argc, char ***argv, int *error)
     {"intensity", required_argument, 0, 0},
     {"aspeed", required_argument, 0, 0}, // audio speed
     {"pitch", required_argument, 0, 0},
+    {"grayscale", required_argument, 0, 0},
+    {"colorinvert", required_argument, 0, 0},
     {0, 0, 0, 0}
     };
 

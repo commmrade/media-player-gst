@@ -37,6 +37,11 @@ typedef struct Settings {
     gboolean has_pitch; // false by default
     float pitch_pitch; // 1.0f by def
     float pitch_rate; // (audio speed), 1.0 by default
+
+    gboolean has_videobalance; // false by default
+    double video_saturation; // 1.0 by default
+   
+    gboolean has_colorinvert; // false by default
 } Settings;
 
 void settings_parse_cli(Settings *settings, int *argc, char ***argv, int *error);

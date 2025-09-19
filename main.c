@@ -30,8 +30,8 @@ int main(int argc, char** argv) {
 
     gst_init(&argc, &argv);
 
-    State state;
-    Settings settings;
+    State state = {0};
+    Settings settings = {0};
 
     // Cmd arguments must override automatic media type detection
     int error;

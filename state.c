@@ -1,9 +1,11 @@
 #include "state.h"
 #include "glib.h"
 #include "gst/gstbin.h"
+#include "gst/gstcaps.h"
 #include "gst/gstelement.h"
 #include "gst/gstelementfactory.h"
 #include "gst/gstutils.h"
+#include <math.h>
 #include <stdio.h>
 
 void state_add_elements(State* state, Settings* settings) {
@@ -24,6 +26,10 @@ void state_add_elements(State* state, Settings* settings) {
         gst_bin_add(GST_BIN(state->pipeline), state->pitch);
     }
 
+    // video
+    if (settings->has_videobalance || settings->has_colorinvert) {
+        gst_bin_add(GST_BIN(state->pipeline), state->videobalance_filter);
+    }
     if (!state->is_audio_only) {
         gst_bin_add_many(GST_BIN(state->pipeline), state->video_converter, state->video_sink, NULL);
     }
@@ -68,13 +74,28 @@ gboolean state_link_elements(State* state, Settings* settings) {
 
     g_ptr_array_free(audio_elements, FALSE);
 
-    // Video path
+    // Video stuff
     if (!state->is_audio_only) {
-        if (!gst_element_link_many(state->video_converter, state->video_sink, NULL)) {
-            g_printerr("Unable to link video elements\n");
-            g_object_unref(state->pipeline);
-            return FALSE;
+        GPtrArray* video_elements = g_ptr_array_new();
+        g_ptr_array_add(video_elements, state->video_converter);
+        
+        if (settings->has_videobalance || settings->has_colorinvert) {
+            g_ptr_array_add(video_elements, state->videobalance_filter);
         }
+
+        g_ptr_array_add(video_elements, state->video_sink);
+        for (int i = 0; i < video_elements->len - 1; ++i) {
+            GstElement* src = g_ptr_array_index(video_elements, i);
+            GstElement* dst = g_ptr_array_index(video_elements, i + 1);
+
+            if (!gst_element_link_many(src, dst, NULL)) {
+                g_printerr("Was unable to link %s and %s\n", gst_element_get_name(src), gst_element_get_name(dst));
+                g_object_unref(state->pipeline);
+                g_ptr_array_free(video_elements, FALSE);
+                return FALSE;
+            }
+        } 
+        g_ptr_array_free(video_elements, FALSE);
     }
 
     return TRUE;
@@ -85,6 +106,11 @@ gboolean state_create_all_elements(State* state, Settings* settings) {
     state->audio_converter = gst_element_factory_make("audioconvert", "audio-converter");
     state->audio_resampler = gst_element_factory_make("audioresample", "audio-resampler");
     state->audio_sink = gst_element_factory_make("autoaudiosink", "audio-sink");
+
+    if (!state->source || !state->audio_converter || !state->audio_resampler || !state->audio_sink) {
+        g_printerr("Could not create all elements\n");
+        return FALSE;
+    }
 
     // -------------------------------------------------------------
     // Adding new filter checklist:
@@ -132,18 +158,20 @@ gboolean state_create_all_elements(State* state, Settings* settings) {
     if (!state->is_audio_only) {
         state->video_converter = gst_element_factory_make("videoconvert", "video-converter");
         state->video_sink = gst_element_factory_make("autovideosink", "video-sink");
-    }
-    
-    if (!state->source || !state->audio_converter || !state->audio_resampler || !state->audio_sink) {
-        g_printerr("Could not create all elements\n");
-        return FALSE;
-    }
-    if (!state->is_audio_only) {
+
+        if (settings->has_videobalance || settings->has_colorinvert) {
+            state->videobalance_filter = gst_element_factory_make("videobalance", "video-balance");
+            if (!state->videobalance_filter) {
+                g_printerr("Could not create videobalance, skipping...\nn");
+            }
+        }
+
         if (!state->video_converter || !state->video_sink) {
             g_printerr("Could not create all video elements\n");
             return FALSE;
         }
     }
+
     return TRUE;
 }
 
@@ -165,5 +193,18 @@ void state_setup_filter_values_from_settings(State* state, Settings* settings) {
     }
     if (settings->has_pitch) {
         g_object_set(state->pitch, "rate", settings->pitch_rate, "pitch", settings->pitch_pitch, NULL);
+    }
+    if (settings->has_videobalance) {
+        printf("Gray; %f\n", settings->video_saturation);
+        g_object_set(state->videobalance_filter, "saturation", settings->video_saturation, NULL);
+    }
+    if (settings->has_colorinvert) {
+        double contrast;
+        double brightness;
+
+        contrast = 0.1;
+        brightness = 0.1;
+
+        g_object_set(state->videobalance_filter, "contrast", contrast, "brightness", brightness, NULL);
     }
 }
