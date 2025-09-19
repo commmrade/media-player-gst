@@ -42,6 +42,9 @@ typedef struct Settings {
     double video_saturation; // 1.0 by default
    
     gboolean has_colorinvert; // false by default
+    
+    gboolean has_noise_reduction; // false by default
+    float noise_reduction; // 0.0f by default
 } Settings;
 
 void settings_parse_cli(Settings *settings, int *argc, char ***argv, int *error);

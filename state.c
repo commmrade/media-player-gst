@@ -25,6 +25,9 @@ void state_add_elements(State* state, Settings* settings) {
     if (settings->has_pitch) {
         gst_bin_add(GST_BIN(state->pipeline), state->pitch);
     }
+    if (settings->has_noise_reduction) {
+        gst_bin_add(GST_BIN(state->pipeline), state->noise_reduction);
+    }
 
     // video
     if (settings->has_videobalance || settings->has_colorinvert) {
@@ -56,6 +59,9 @@ gboolean state_link_elements(State* state, Settings* settings) {
     }
     if (settings->has_pitch) {
         g_ptr_array_add(audio_elements, state->pitch);
+    }
+    if (settings->has_noise_reduction) {
+        g_ptr_array_add(audio_elements, state->noise_reduction);
     }
 
     g_ptr_array_add(audio_elements, state->audio_sink);
@@ -149,7 +155,13 @@ gboolean state_create_all_elements(State* state, Settings* settings) {
     if (settings->has_pitch) {
         state->pitch = gst_element_factory_make("pitch", "pitch-filter");
         if (!state->pitch) {
-            g_printerr("Could not create pitch filter, skipping...\nn");
+            g_printerr("Could not create pitch filter, skipping...\n");
+        }
+    }
+    if (settings->has_noise_reduction) {
+        state->noise_reduction = gst_element_factory_make("audiornnoise", "noise-reduction-filter");
+        if (!state->noise_reduction) {
+            g_printerr("Could not create noise reduction filter, skipping...\n");
         }
     }
     
@@ -206,5 +218,8 @@ void state_setup_filter_values_from_settings(State* state, Settings* settings) {
         brightness = 0.1;
 
         g_object_set(state->videobalance_filter, "contrast", contrast, "brightness", brightness, NULL);
+    }  
+    if (settings->has_noise_reduction) {
+        g_object_set(state->noise_reduction, "voice-activity-threshold", settings->noise_reduction, NULL);
     }
 }

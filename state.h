@@ -24,6 +24,7 @@ typedef struct State {
     GstElement* pass_filter; // low pass, high pass
     GstElement* audio_echo; // for echo | reverb
     GstElement* pitch; // for audio speed (aspeed) && pitch
+    GstElement* noise_reduction;
 
     // video
     GstElement* videobalance_filter;
