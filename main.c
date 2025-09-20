@@ -4,7 +4,9 @@
 #include "gst/gstcaps.h"
 #include "gst/gstclock.h"
 #include "gst/gstelement.h"
+#include "gst/gstevent.h"
 #include "gst/gstmessage.h"
+#include "gst/gstobject.h"
 #include "gst/gstpad.h"
 #include "gst/gstpipeline.h"
 #include "gst/gststructure.h"
@@ -13,12 +15,13 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <string.h>
+#include "gst/gstutils.h"
 #include "settings.h"
 #include "state.h"
 
 
 
-static void handle_message(GstMessage *message, State *state);
+static void handle_message(GstMessage *message, State *state, Settings* settings);
 static void pad_added_signal (GstElement *self, GstPad *new_pad, State* state);
 
 
@@ -84,15 +87,37 @@ int main(int argc, char** argv) {
         g_object_unref(state.pipeline);
         return -1;
     }
+    state.is_running = TRUE;
 
     GstBus* bus = NULL;
     GstMessage* message = NULL;
     bus = gst_element_get_bus(state.pipeline);
     do {
-        message = gst_bus_timed_pop_filtered(bus, GST_CLOCK_TIME_NONE, GST_MESSAGE_ERROR | GST_MESSAGE_EOS);
-        if (!message) continue;
-        handle_message(message, &state);
-        gst_message_unref(message);
+        message = gst_bus_timed_pop_filtered(bus, 100 * GST_MSECOND, GST_MESSAGE_ERROR | GST_MESSAGE_EOS | GST_MESSAGE_STATE_CHANGED);
+        if (message) {
+            handle_message(message, &state, &settings);
+            gst_message_unref(message);
+        } else {
+            if (settings.has_speed && (state.is_playing && !state.is_rate_set)) {
+                gint64 cur = -1;
+                int ret = gst_element_query_position(state.pipeline, GST_FORMAT_TIME, &cur);
+                if (ret) {
+                    GstEvent* seek_event;
+                    seek_event = gst_event_new_seek(
+                    settings.speed, 
+                    GST_FORMAT_TIME, 
+                    GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, 
+                    GST_SEEK_TYPE_SET, cur, GST_SEEK_TYPE_END, 0);
+
+                    ret = gst_element_send_event(state.pipeline, seek_event);
+                    if (!ret) {
+                        g_printerr("Failed to update speed rate.\n");
+                    }
+                    // If we failed to send the event this time, i think there is no point in retrying
+                    state.is_rate_set = TRUE;
+                }
+            }
+        }
     } while (state.is_running);
 exit:
     g_object_unref(bus);
@@ -148,7 +173,7 @@ exit:
     }
 }
 
-static void handle_message(GstMessage *message, State *state) {
+static void handle_message(GstMessage *message, State *state, Settings* settings) {
     switch (GST_MESSAGE_TYPE(message)) {
         case GST_MESSAGE_ERROR: {
             GError* err;
@@ -164,6 +189,16 @@ static void handle_message(GstMessage *message, State *state) {
         }
         case GST_MESSAGE_EOS: {
             state->is_running = FALSE;
+            break;
+        }
+        case GST_MESSAGE_STATE_CHANGED: {
+            // if speed rate wanst updated yet and thats the object we need
+            if (GST_MESSAGE_SRC(message) == GST_OBJECT(state->pipeline)) { 
+                GstState old_state, new_state, pend_state;
+                // parse the message
+                gst_message_parse_state_changed(message, &old_state, &new_state, &pend_state);
+                state->is_playing = new_state == GST_STATE_PLAYING;
+            }
             break;
         }
         default: {

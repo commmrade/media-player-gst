@@ -204,7 +204,7 @@ void state_setup_filter_values_from_settings(State* state, Settings* settings) {
         g_object_set(state->audio_echo, "delay", settings->echo_delay, "feedback", settings->echo_feedback, "intensity", settings->echo_intensity, NULL);
     }
     if (settings->has_pitch) {
-        g_object_set(state->pitch, "rate", settings->pitch_rate, "pitch", settings->pitch_pitch, NULL);
+        g_object_set(state->pitch, "pitch", settings->pitch_pitch, NULL);
     }
     if (settings->has_videobalance) {
         g_object_set(state->videobalance_filter, "saturation", settings->video_saturation, NULL);

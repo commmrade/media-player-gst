@@ -26,12 +26,14 @@ typedef struct State {
     GstElement* pitch; // for audio speed (aspeed) && pitch
     GstElement* noise_reduction;
 
+    gboolean is_rate_set; // for speed filter, FALSE by default
+
     // video
     GstElement* videobalance_filter;
     //
 
     gboolean is_audio_only;
-
+    gboolean is_playing; // set in MESSAGE_STATE_CHANGED
     gboolean is_running;
 } State;
 

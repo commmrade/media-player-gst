@@ -180,11 +180,11 @@ static void parse_long_option(const char* option_name, Settings* settings) {
             settings->has_echo = TRUE;
             settings->echo_intensity = result;
         }
-    } else if (!strcmp(option_name, "aspeed")) {
+    } else if (!strcmp(option_name, "speed")) {
         float result;
         if (parse_float(optarg, NULL, NULL, &result)) {
-            settings->has_pitch = TRUE;
-            settings->pitch_rate = result;
+            settings->has_speed = TRUE;
+            settings->speed = result;
         }
     } else if (!strcmp(option_name, "pitch")) {
         float result;
@@ -224,7 +224,7 @@ void settings_set_default(Settings* settings) {
     settings->echo_intensity = .0f;
 
     settings->pitch_pitch = 1.0f;
-    settings->pitch_rate = 1.0f;
+    settings->speed = 1.0f;
     settings->video_saturation = 1.0;
     settings->has_colorinvert = FALSE;
 
@@ -235,6 +235,7 @@ void settings_set_default(Settings* settings) {
     settings->has_volume = FALSE;
     settings->has_pitch = FALSE;
     settings->has_videobalance = FALSE;
+    settings->has_speed = FALSE;
     settings->has_noise_reduction = FALSE;
 }
 
@@ -277,7 +278,7 @@ void settings_parse_cli(Settings *settings, int *argc, char ***argv, int *error)
     {"delay", required_argument, 0, 0},
     {"feedback", required_argument, 0, 0},
     {"intensity", required_argument, 0, 0},
-    {"aspeed", required_argument, 0, 0}, // audio speed
+    {"speed", required_argument, 0, 0}, // audio speed
     {"pitch", required_argument, 0, 0},
     {"grayscale", required_argument, 0, 0},
     {"colorinvert", required_argument, 0, 0},
