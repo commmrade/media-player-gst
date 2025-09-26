@@ -255,8 +255,19 @@ char* settings_get_file_uri(Settings* settings) { // TODO: https url or file uri
             return NULL;
         }
         // consturct a file://{path} format string
-        char* full_path = malloc(strlen(FILE_PREFIX) + strlen(settings->filepath) + 1); // +1 for \0
-        sprintf(full_path, "%s%s", FILE_PREFIX, settings->filepath);
+        // char* full_path = malloc(strlen(FILE_PREFIX) + strlen(settings->filepath) + 1); // +1 for \0
+        // sprintf(full_path, "%s%s", FILE_PREFIX, settings->filepath);
+
+        char* abs_path = g_canonicalize_filename(settings->filepath, NULL);
+
+        GError* err = NULL;
+        char* full_path = g_filename_to_uri(abs_path, NULL, &err);
+        g_free(abs_path);
+        if (err) {
+            g_printerr("Could not get file absolute path\n");
+            g_error_free(err);
+            return NULL;
+        }
         return full_path;
     }
 }

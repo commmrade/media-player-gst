@@ -14,7 +14,6 @@
 #include <gst/gst.h>
 #include <stdlib.h>
 #include <getopt.h>
-#include <string.h>
 #include "gst/gstutils.h"
 #include "settings.h"
 #include "state.h"
@@ -104,9 +103,9 @@ int main(int argc, char** argv) {
                 if (ret) {
                     GstEvent* seek_event;
                     seek_event = gst_event_new_seek(
-                    settings.speed, 
-                    GST_FORMAT_TIME, 
-                    GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, 
+                    settings.speed,
+                    GST_FORMAT_TIME,
+                    GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE,
                     GST_SEEK_TYPE_SET, cur, GST_SEEK_TYPE_END, 0);
 
                     ret = gst_element_send_event(state.pipeline, seek_event);
@@ -193,7 +192,7 @@ static void handle_message(GstMessage *message, State *state, Settings* settings
         }
         case GST_MESSAGE_STATE_CHANGED: {
             // if speed rate wanst updated yet and thats the object we need
-            if (GST_MESSAGE_SRC(message) == GST_OBJECT(state->pipeline)) { 
+            if (GST_MESSAGE_SRC(message) == GST_OBJECT(state->pipeline)) {
                 GstState old_state, new_state, pend_state;
                 // parse the message
                 gst_message_parse_state_changed(message, &old_state, &new_state, &pend_state);
