@@ -126,7 +126,6 @@ static gboolean parse_ul(const char* ul_str, guint64* min, guint64* max, guint64
 }
 
 static void parse_long_option(const char* option_name, Settings* settings) {
-    // TODO: FACTOR OUT ARITHMETIC CONVERSIONS FROM STR INTO SEPARATE FUNCTIONS
     if (!strcmp(option_name, "path")) {
         settings->filepath = strdup(optarg);
         gboolean is_web = is_path_web(settings->filepath);
@@ -239,13 +238,12 @@ void settings_set_default(Settings* settings) {
     settings->has_noise_reduction = FALSE;
 }
 
-char* settings_get_file_uri(Settings* settings) { // TODO: https url or file uri
+char* settings_get_file_uri(Settings* settings) {
     if (settings->filepath == NULL) {
         g_printerr("File was not set, aborting...\n");
         return NULL;
     }
 
-    // TODO: Maybe more flexible deduction
     if (strstr(settings->filepath, "https://") || strstr(settings->filepath, "http://")) {
         return strdup(settings->filepath);
         // To unify the behaviour between webpath and filepath, we dup this string, so the user has to take care of it, just like with filepath (there is malloc)
